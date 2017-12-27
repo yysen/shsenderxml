@@ -1,0 +1,10 @@
+areacode: 310000
+url: http://10.31.6.110:8088/gwssi-stats
+src: src
+finishout: upload
+username: 10010001
+password: 123456
+filedir: "D:\\MyGo\\src\\shxml\\xml"
+startmonth: "201701"
+stopmonth: "201802"
+uptime: "20160102"
