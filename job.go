@@ -28,8 +28,10 @@ var (
 	jobs      = cron.New()
 	running   = false
 	jobRun    = &sync.Mutex{}
-	FileMatch = regexp.MustCompile("^R433[0-9]{8}[0-9]{14}.{5}[.]xml$")
+	FileMatch = regexp.MustCompile("^R433")
 	logOut    = datelogger.NewDateLog("log")
+	//系统当前时间
+	now = time.Now()
 )
 
 type Files struct {
@@ -196,8 +198,7 @@ func buildDataFile() error {
 
 //获得需打开的文件夹路径:具体到月份文件夹,读一段时间的文件夹，读开始不读结束的月份，如无开始或无结束则读最新月的
 func openFileDir(fileDir, startMonth, stopMonth string) ([]string, error) {
-	//系统当前时间
-	now := time.Now()
+
 	if len(stopMonth) == 0 {
 		stopMonth = "999999"
 	}
@@ -248,8 +249,7 @@ func readFile(fileDir, upTime, startMonth, stopMonth string, cd func(num int, da
 			logOut.Println(err)
 			return err
 		}
-		//系统当前时间
-		now := time.Now()
+
 		//判断是否有上传日期限制
 		if len(upTime) < 8 {
 			upTime = now.Format("20060102")
