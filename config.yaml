@@ -4,7 +4,7 @@ src: src
 finishout: upload
 username: 10010001
 password: 123456
-filedir: "D:\\MyGo\\src\\shxml\\xml"
-startmonth: "201701"
-stopmonth: "201802"
-uptime: "20160102"
+filedir: "F:\\xml"
+startmonth: "201708"
+stopmonth: "201709"
+uptime: "20160101"

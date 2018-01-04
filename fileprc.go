@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io/ioutil"
 	"reflect"
 	"regexp"
@@ -424,34 +425,41 @@ func readOneFile(fs string) ([][]string, error) {
 			return dt.Format("20060102")
 
 		}(), //经营期限/营业期限/合伙期限止，格式yyyyMMdd
-		OPERATIONPERIOD_01:     "",                                                                                          //经营期限
-		DOM_01:                 prj.Corp_info[0].Corporation_info_reg.Address,                                               //住所
-		POSTCODE_01:            prj.Corp_info[0].Corporation_info_reg.Zip,                                                   //邮政编码
-		TEL_01:                 prj.Corp_info[0].Corporation_info_reg.Telephone,                                             //联系电话
-		PROLOC_01:              prj.Corp_info[0].Corporation_info_reg.Pro_loc,                                               //生产经营地址
-		OPSCOPE_01:             prj.Corp_info[0].Corporation_info_reg.Business_scope,                                        //经营范围
-		REGCAP_01:              strconv.FormatFloat(float64(prj.Corp_info[0].Corporation_info_reg.Reg_capital), 'f', 6, 64), //注册资本
-		REGCAPCUR_01:           convert(curDict, prj.Corp_info[0].Corporation_info_reg.Currency),                            //货币种类
-		CURAMOUNT_01:           strconv.FormatFloat(float64(prj.Corp_info[0].Corporation_info_reg.Reg_capital), 'f', 6, 64), //币种金额
-		INFOACTIONTYPE_01:      "",                                                                                          //信息操作类型
-		S_MODIFYTIME_01:        "",                                                                                          //数据修改时间，格式为yyyyMMddHHmmss
-		S_UNITCODE_01:          convert(areacodeDict, prj.Corp_info[0].Corporation_info_reg.Area_code),                      //行政区划代码
-		S_SJBBH_01:             "",                                                                                          //数据包编码
-		S_ISCANCEL_01:          "",                                                                                          //是否被注销注销
-		S_BATCHGUID_01:         "",                                                                                          //批次号，数据上传所属批次号，用于判断是否是同一批次数据
-		S_PARENTENTDOCUMENT_01: prj.Corp_info[0].Corporation_info_reg.Parent_name,                                           //上级主管部门名称
-		S_LEREP_01:             prj.Corp_info[0].Corporation_info_reg.Person_name,                                           //法定代表人姓名
-		S_INFOFINANCE_01:       prj.Corp_info[0].Corporation_finance_person.Finance_name,                                    //财务负责人姓名
-		S_INVESTORCOUNT_01:     "",                                                                                          //投资人数量
-		S_CHILDENTCOUNT_01:     "",                                                                                          //下级子公司数量
-		S_ALTDATE_01:           "",                                                                                          //变更信息最新一次变更的时间，取自变更信息中变更时间
-		S_STATUS_01:            "",                                                                                          //状态，999：正常，100：必要性审核，200：核实性审核
-		S_ISREPEAT_01:          "",                                                                                          //统一社会信用代码是否重复，0：不重码，1：重码
-		S_HANDLETYPE_01:        "",                                                                                          //对重码数据的人工处理，0：未处理，1：正常，2：删除
-		S_ISAUDITED_01:         "",                                                                                          //是否已审核，0：未审核，1：已审核
-		S_ISPUSHEDMLK_01:       "",                                                                                          //是否已推送到名录库，0：未推送，1：推送
-		S_UPLOADTIME_01:        "",                                                                                          //数据上传时间，格式为yyyyMMddHHmmss
-		S_AUDITTIME_01:         "",                                                                                          //数据审核的时间，格式为yyyyMMddHHmmss
+		OPERATIONPERIOD_01: "",                                                                                          //经营期限
+		DOM_01:             prj.Corp_info[0].Corporation_info_reg.Address,                                               //住所
+		POSTCODE_01:        prj.Corp_info[0].Corporation_info_reg.Zip,                                                   //邮政编码
+		TEL_01:             prj.Corp_info[0].Corporation_info_reg.Telephone,                                             //联系电话
+		PROLOC_01:          prj.Corp_info[0].Corporation_info_reg.Pro_loc,                                               //生产经营地址
+		OPSCOPE_01:         prj.Corp_info[0].Corporation_info_reg.Business_scope,                                        //经营范围
+		REGCAP_01:          strconv.FormatFloat(float64(prj.Corp_info[0].Corporation_info_reg.Reg_capital), 'f', 6, 64), //注册资本
+		REGCAPCUR_01:       convert(curDict, prj.Corp_info[0].Corporation_info_reg.Currency),                            //货币种类
+		CURAMOUNT_01:       strconv.FormatFloat(float64(prj.Corp_info[0].Corporation_info_reg.Reg_capital), 'f', 6, 64), //币种金额
+		INFOACTIONTYPE_01: func() string {
+			if len(prj.Corp_info[0].Corporation_info_change) > 0 {
+				return "1"
+			} else if !prj.Corp_info[0].Corporation_info_reg.Revoke_date.IsZero() {
+				return "2"
+			}
+			return "0"
+		}(), //信息操作类型
+		S_MODIFYTIME_01:        "",                                                                     //数据修改时间，格式为yyyyMMddHHmmss
+		S_UNITCODE_01:          convert(areacodeDict, prj.Corp_info[0].Corporation_info_reg.Area_code), //行政区划代码
+		S_SJBBH_01:             "",                                                                     //数据包编码
+		S_ISCANCEL_01:          "",                                                                     //是否被注销注销
+		S_BATCHGUID_01:         "",                                                                     //批次号，数据上传所属批次号，用于判断是否是同一批次数据
+		S_PARENTENTDOCUMENT_01: prj.Corp_info[0].Corporation_info_reg.Parent_name,                      //上级主管部门名称
+		S_LEREP_01:             prj.Corp_info[0].Corporation_info_reg.Person_name,                      //法定代表人姓名
+		S_INFOFINANCE_01:       prj.Corp_info[0].Corporation_finance_person.Finance_name,               //财务负责人姓名
+		S_INVESTORCOUNT_01:     fmt.Sprintf("%d", len(prj.Corp_info[0].Corporation_info_change)),       //投资人数量
+		S_CHILDENTCOUNT_01:     "",                                                                     //下级子公司数量
+		S_ALTDATE_01:           "",                                                                     //变更信息最新一次变更的时间，取自变更信息中变更时间
+		S_STATUS_01:            "",                                                                     //状态，999：正常，100：必要性审核，200：核实性审核
+		S_ISREPEAT_01:          "",                                                                     //统一社会信用代码是否重复，0：不重码，1：重码
+		S_HANDLETYPE_01:        "",                                                                     //对重码数据的人工处理，0：未处理，1：正常，2：删除
+		S_ISAUDITED_01:         "",                                                                     //是否已审核，0：未审核，1：已审核
+		S_ISPUSHEDMLK_01:       "",                                                                     //是否已推送到名录库，0：未推送，1：推送
+		S_UPLOADTIME_01:        "",                                                                     //数据上传时间，格式为yyyyMMddHHmmss
+		S_AUDITTIME_01:         "",                                                                     //数据审核的时间，格式为yyyyMMddHHmmss
 	}
 	datas = append(datas, toStringStruct(entInfo, entSize))
 	//法人信息表
