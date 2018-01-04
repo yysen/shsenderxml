@@ -135,8 +135,6 @@ func createNewZipFile() (*os.File, *zip.Writer, error) {
 			return nil, nil, err
 		}
 	}
-	//w, err := zipw.Create("ent_info.dat")  bufio.NewWriter(w),
-
 	//bufio.NewWriter创建一个具有默认大小缓冲、写入w的*Writer。
 	return file, zipw, err
 }
@@ -198,7 +196,6 @@ func buildDataFile() error {
 
 //获得需打开的文件夹路径:具体到月份文件夹,读一段时间的文件夹，读开始不读结束的月份，如无开始或无结束则读最新月的
 func openFileDir(fileDir, startMonth, stopMonth string) ([]string, error) {
-
 	if len(stopMonth) == 0 {
 		stopMonth = "999999"
 	}
@@ -221,7 +218,7 @@ func openFileDir(fileDir, startMonth, stopMonth string) ([]string, error) {
 	for _, v := range info {
 		if v.Name() >= startMonth && v.Name() < stopMonth {
 			dirs = append(dirs, filepath.Join(fileDir, v.Name()))
-		} else if v.Name() > startMonth && v.Name() >= stopMonth && v.Name() == now.Format("200601") {
+		} else if v.Name() < startMonth && v.Name() <= stopMonth && v.Name() == now.Format("200601") {
 			dirs = append(dirs, filepath.Join(fileDir, v.Name()))
 		}
 	}
@@ -249,7 +246,6 @@ func readFile(fileDir, upTime, startMonth, stopMonth string, cd func(num int, da
 			logOut.Println(err)
 			return err
 		}
-
 		//判断是否有上传日期限制
 		if len(upTime) < 8 {
 			upTime = now.Format("20060102")
