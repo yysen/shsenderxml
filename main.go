@@ -75,7 +75,7 @@ func main() {
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-	//uploadAll()
+	uploadAll()
 	dlog.Println("start service...")
 	if *build {
 		//马上执行一次
