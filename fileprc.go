@@ -450,7 +450,7 @@ func readOneFile(fs string) ([][]string, error) {
 		S_PARENTENTDOCUMENT_01: prj.Corp_info[0].Corporation_info_reg.Parent_name,                      //上级主管部门名称
 		S_LEREP_01:             prj.Corp_info[0].Corporation_info_reg.Person_name,                      //法定代表人姓名
 		S_INFOFINANCE_01:       prj.Corp_info[0].Corporation_finance_person.Finance_name,               //财务负责人姓名
-		S_INVESTORCOUNT_01:     fmt.Sprintf("%d", len(prj.Corp_info[0].Corporation_info_change)),       //投资人数量
+		S_INVESTORCOUNT_01:     fmt.Sprintf("%d", len(prj.Corp_info[0].Corporation_info_investor)),    //投资人数量
 		S_CHILDENTCOUNT_01:     "",                                                                     //下级子公司数量
 		S_ALTDATE_01:           "",                                                                     //变更信息最新一次变更的时间，取自变更信息中变更时间
 		S_STATUS_01:            "",                                                                     //状态，999：正常，100：必要性审核，200：核实性审核
