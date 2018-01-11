@@ -65,7 +65,7 @@ func main() {
 		panic(err)
 	}
 	//凌晨两点执行
-	if err := jobs.AddFunc("0 30 23 * * *", taskRun); err != nil {
+	if err := jobs.AddFunc("0 55 23 * * *", taskRun); err != nil {
 		panic(err)
 	}
 	jobs.Start()
