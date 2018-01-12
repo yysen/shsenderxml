@@ -350,14 +350,27 @@ func readOneFile(fs string) ([][]string, error) {
 	}
 	//读取的数据
 	datas := [][]string{}
+	//社会信用代码
+	scid := strings.Replace(prj.Corp_info[0].Corporation_info_reg.Uni_sc_id, " ", "", -1)
+	//获取组织机构代码
+	code := strings.Replace(prj.Corp_info[0].Corporation_info_reg.Organ_code, " ", "", -1)
+	if len(code) == 0 && len(scid) == 18 {
+		uniscid := []byte(scid)
+		code = string(uniscid[8:17])
+	}
 	//主表uuid
-	entUUID := hex.EncodeToString(uuid.NewUUID())
+	entUUID := code
+	if len(code) == 9 {
+		entUUID = entUUID + strings.Repeat("a", 32-len(code))
+	} else {
+		entUUID = hex.EncodeToString(uuid.NewUUID())
+	}
+	//主表uuid
 	ENTTYPE, REGTYPE, HOLDINGSMSG, UNITTYPE, ORGTYPE, ACCCATE := transform(etpsTypeDict, prj.Corp_info[0].Corporation_info_reg.Etps_type)
 	entInfo := entInfo{
 		retype:  "01",
 		GUID_01: entUUID,
 		UNISCID_01: func() string {
-			scid := prj.Corp_info[0].Corporation_info_reg.Uni_sc_id
 			if len(scid) == 0 {
 				return "--"
 			}
@@ -371,7 +384,7 @@ func readOneFile(fs string) ([][]string, error) {
 			}
 			return "1"
 		}(), //工商业务类型
-		ORGNCODE_01: prj.Corp_info[0].Corporation_info_reg.Organ_code, //组织机构代码
+		ORGNCODE_01: code, //组织机构代码
 		REGNO_01: func() string {
 			scid := prj.Corp_info[0].Corporation_info_reg.Reg_no
 			if len(scid) == 0 {
