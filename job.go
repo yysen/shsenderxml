@@ -1,22 +1,18 @@
 package main
 
 import (
+	"archive/zip"
+	"bufio"
+	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-
-	"fmt"
-
-	"os"
-	"path/filepath"
-
-	"archive/zip"
-
-	"bufio"
 
 	"github.com/linlexing/datelogger"
 	"github.com/robfig/cron"
@@ -32,10 +28,17 @@ var (
 	logOut    = datelogger.NewDateLog("log")
 	//系统当前时间
 	now = time.Now()
+	//存储打开的文件夹
+	useFileDirs = new(userFiles)
+	//间隔日期
+	dayNum int = 0
 )
 
 type Files struct {
 	List []os.FileInfo
+}
+type userFiles struct {
+	fileDirs []string
 }
 
 func (f *Files) Swap(i, j int) {
@@ -60,13 +63,18 @@ func taskRun() {
 	jobRun.Lock()
 	defer jobRun.Unlock()
 	dlog.Println("start job")
-	err := buildDataFile()
+	err := useFileDirs.openFileDir(vconfig.Filedir, vconfig.Startmonth, vconfig.Stopmonth)
+	if err != nil {
+		dlog.Error(err)
+		return
+	}
+	err = buildDataFile()
 	if err != nil {
 		dlog.Error(err)
 		return
 	}
 	//然后开始上传
-	uploadAll()
+	//uploadAll()
 
 	dlog.Println("job finished")
 }
@@ -174,7 +182,7 @@ func buildDataFile() error {
 	//共写多少行
 	icount := 0
 	//写入文件
-	if err := readFile(vconfig.Filedir, vconfig.Uptime, vconfig.Startmonth, vconfig.Stopmonth, func(i int, datas [][]string) error {
+	returnTime, err := readFile(vconfig.Uptime, func(i int, datas [][]string) error {
 		if len(datas) > 0 {
 			icount += i
 			dlog.Println("rownum:", i, "write", i, "rows,total:", icount)
@@ -186,16 +194,20 @@ func buildDataFile() error {
 			}
 		}
 		return nil
-	}); err != nil {
+	})
+	if err != nil {
 		logOut.Println(err)
 		return err
 	}
-
+	//如果返回时间等于当前时间，退出程序
+	if returnTime < now.Format("20060102") {
+		buildDataFile()
+	}
 	return nil
 }
 
 //获得需打开的文件夹路径:具体到月份文件夹,读一段时间的文件夹，读开始不读结束的月份，如无开始或无结束则读最新月的
-func openFileDir(fileDir, startMonth, stopMonth string) ([]string, error) {
+func (user *userFiles) openFileDir(fileDir, startMonth, stopMonth string) error {
 	if len(stopMonth) == 0 {
 		stopMonth = "999999"
 	}
@@ -205,14 +217,14 @@ func openFileDir(fileDir, startMonth, stopMonth string) ([]string, error) {
 	file, err := os.Open(fileDir)
 	if err != nil {
 		logOut.Println(err)
-		return nil, err
+		return err
 	}
 	defer file.Close()
 	//获得file文件里的所有文件对象
 	info, err := file.Readdir(0)
 	if err != nil {
 		logOut.Println(err)
-		return nil, err
+		return err
 	}
 	dirs := []string{}
 	for _, v := range info {
@@ -222,39 +234,52 @@ func openFileDir(fileDir, startMonth, stopMonth string) ([]string, error) {
 			dirs = append(dirs, filepath.Join(fileDir, v.Name()))
 		}
 	}
-	return dirs, nil
+	user.fileDirs = dirs
+	return nil
 }
 
 //从文件夹里读取xml文件，
-func readFile(fileDir, upTime, startMonth, stopMonth string, cd func(num int, datas [][]string) error) error {
-	fileDirs, err := openFileDir(fileDir, startMonth, stopMonth)
-	if err != nil {
-		logOut.Println(err)
-		return err
-	}
-
+func readFile(upTime string, cd func(num int, datas [][]string) error) (string, error) {
+	returnTime := now.Format("20060102")
+	fileDirs := useFileDirs.fileDirs
+	//结束日期
+	stopTime := returnTime
 	for _, dir := range fileDirs {
 		//读取文件夹
 		file, err := os.Open(dir)
 		if err != nil {
 			logOut.Println(err)
-			return err
+			return returnTime, err
 		}
 		defer file.Close()
 		info, err := file.Readdir(0)
 		if err != nil {
 			logOut.Println(err)
-			return err
+			return returnTime, err
 		}
 		//判断是否有上传日期限制
 		if len(upTime) < 8 {
 			upTime = now.Format("20060102")
 		}
+		//每次五天
+		dayNum = dayNum + 2
+		//最开始的日期
+		up := upTime
+		stopTime, err = turnTime(up, dayNum)
+		if err != nil {
+			logOut.Println(err)
+			return returnTime, err
+		}
+		upTime, err = turnTime(stopTime, -2)
+		if err != nil {
+			logOut.Println(err)
+			return returnTime, err
+		}
 		//存放所需文件
 		outList := []os.FileInfo{}
 		for _, v := range info {
 			//判断文件名是否符合要求
-			if FileMatch.MatchString(v.Name()) && v.Name()[12:20] >= upTime && v.Size() > 0 {
+			if FileMatch.MatchString(v.Name()) && v.Name()[12:20] >= upTime && v.Name()[12:20] < stopTime && v.Size() > 0 {
 				outList = append(outList, v)
 			}
 		}
@@ -273,7 +298,7 @@ func readFile(fileDir, upTime, startMonth, stopMonth string, cd func(num int, da
 				strs, err := readOneFile(filepath.Join(dir, oneFile.Name()))
 				if err != nil {
 					logOut.Println(err)
-					return err
+					return returnTime, err
 				}
 				datas = append(datas, strs...)
 				//判断是否读入batchNum个文件
@@ -281,7 +306,7 @@ func readFile(fileDir, upTime, startMonth, stopMonth string, cd func(num int, da
 					//将文件写入
 					if err := cd(icount, datas); err != nil {
 						logOut.Println(err)
-						return err
+						return returnTime, err
 					}
 					icount = 0
 					datas = nil
@@ -291,10 +316,30 @@ func readFile(fileDir, upTime, startMonth, stopMonth string, cd func(num int, da
 			if icount > 0 {
 				if err := cd(icount, datas); err != nil {
 					logOut.Println(err)
-					return err
+					return returnTime, err
 				}
 			}
+		} else {
+			stopTime = returnTime
 		}
 	}
-	return nil
+	return stopTime, nil
+}
+
+//给指定的字符串时间beforDay，加上或减去一定的天数，返回正确的字符串时间afterDay，num大于零为加
+func turnTime(beforDay string, num int) (afterDay string, err error) {
+	oldTime, err := time.Parse("20060102", beforDay)
+	if err != nil {
+		fmt.Print(err)
+		return
+	}
+	dayNum := num * 24
+	//解析一个时间段,得到可供时间类型相加减的Duration
+	d, err := time.ParseDuration(fmt.Sprintf("%vh", dayNum))
+	if err != nil {
+		return
+	}
+	newTime := oldTime.Add(d)
+	afterDay = newTime.Format("20060102")
+	return
 }
