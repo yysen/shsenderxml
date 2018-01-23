@@ -18,7 +18,12 @@ import (
 	"github.com/robfig/cron"
 )
 
-const batchNum = 500
+const (
+	//每次写入最大数量
+	batchNum = 500
+	//间隔日期
+	dayNum = 5
+)
 
 var (
 	jobs      = cron.New()
@@ -30,8 +35,9 @@ var (
 	now = time.Now()
 	//存储打开的文件夹
 	useFileDirs = new(userFiles)
-	//间隔日期
-	dayNum int = 0
+
+	//最开始的日期
+	up string = "20160102"
 )
 
 type Files struct {
@@ -63,6 +69,7 @@ func taskRun() {
 	jobRun.Lock()
 	defer jobRun.Unlock()
 	dlog.Println("start job")
+	up = vconfig.Uptime
 	err := useFileDirs.openFileDir(vconfig.Filedir, vconfig.Startmonth, vconfig.Stopmonth)
 	if err != nil {
 		dlog.Error(err)
@@ -259,18 +266,14 @@ func readFile(upTime string, cd func(num int, datas [][]string) error) (string, 
 		}
 		//判断是否有上传日期限制
 		if len(upTime) < 8 {
-			upTime = now.Format("20060102")
+			up = now.Format("20060102")
 		}
-		//每次五天
-		dayNum = dayNum + 2
-		//最开始的日期
-		up := upTime
 		stopTime, err = turnTime(up, dayNum)
 		if err != nil {
 			logOut.Println(err)
 			return returnTime, err
 		}
-		upTime, err = turnTime(stopTime, -2)
+		upTime, err = turnTime(stopTime, -dayNum)
 		if err != nil {
 			logOut.Println(err)
 			return returnTime, err
@@ -281,6 +284,7 @@ func readFile(upTime string, cd func(num int, datas [][]string) error) (string, 
 			//判断文件名是否符合要求
 			if FileMatch.MatchString(v.Name()) && v.Name()[12:20] >= upTime && v.Name()[12:20] < stopTime && v.Size() > 0 {
 				outList = append(outList, v)
+				up = stopTime
 			}
 		}
 		flist := &Files{outList}
@@ -319,8 +323,7 @@ func readFile(upTime string, cd func(num int, datas [][]string) error) (string, 
 					return returnTime, err
 				}
 			}
-		} else {
-			stopTime = returnTime
+			return stopTime, nil
 		}
 	}
 	return stopTime, nil
